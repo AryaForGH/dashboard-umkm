@@ -5,178 +5,348 @@ import plotly.express as px
 # ======================
 # CONFIG
 # ======================
-st.set_page_config(page_title="Admin Dashboard UMKM", layout="wide")
+st.set_page_config(page_title="Dashboard UMKM", layout="wide")
 
 # ======================
-# STYLE
+# SESSION STATE
+# ======================
+if "page" not in st.session_state:
+    st.session_state.page = "home"
+
+if "selected_toko" not in st.session_state:
+    st.session_state.selected_toko = None
+
+# ======================
+# STYLE (CLEAN MODERN)
 # ======================
 st.markdown("""
 <style>
 
-/* Sidebar */
-[data-testid="stSidebar"] {
-    background-color: #1e293b;
-}
-[data-testid="stSidebar"] * {
-    color: white;
+/* BACKGROUND */
+.stApp {
+    background: linear-gradient(135deg, #0f172a, #1e293b);
 }
 
-/* Card */
+/* TITLE */
+h1, h2, h3 {
+    color: #f1f5f9;
+}
+
+/* CARD CLEAN */
+.card-clean {
+    background: #1e293b;
+    padding: 18px;
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,0.05);
+    transition: 0.2s;
+    margin-bottom: 8px;
+}
+
+.card-clean:hover {
+    transform: translateY(-3px);
+    background: #273449;
+}
+
+/* TITLE CARD */
+.card-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #f1f5f9;
+}
+
+/* SUBTEXT */
+.card-sub {
+    font-size: 12px;
+    color: #94a3b8;
+    margin-top: 5px;
+}
+
+/* CARD DASHBOARD */
 .card {
     padding: 20px;
-    border-radius: 12px;
+    border-radius: 14px;
+    background: #1e293b;
     color: white;
     text-align: center;
-    box-shadow: 0px 4px 10px rgba(0,0,0,0.1);
+    box-shadow: 0px 4px 12px rgba(0,0,0,0.3);
 }
-.card-blue { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
-.card-green { background: linear-gradient(135deg, #22c55e, #15803d); }
-.card-orange { background: linear-gradient(135deg, #f59e0b, #b45309); }
 
-.card h3 { margin: 0; font-size: 16px; }
-.card h1 { margin: 5px 0 0 0; font-size: 28px; }
+/* BUTTON */
+.stButton>button {
+    border-radius: 10px;
+    height: 35px;
+    font-size: 13px;
+    background: #3b82f6;
+    border: none;
+    transition: 0.2s;
+    color: white;
+}
 
-</style>
+.stButton>button:hover {
+    background: #2563eb;
+}
+
+/* DATAFRAME */
+[data-testid="stDataFrame"] {
+    background-color: white;
+    border-radius: 10px;
+}
+
+/* SPACING */
+.block-container {
+    padding-top: 2rem;
+}
+
+</style>u
 """, unsafe_allow_html=True)
 
 # ======================
 # LOAD DATA
 # ======================
 data = pd.read_csv('data_clean.csv')
-rules = pd.read_csv('rules_per_toko.csv')
+rules = pd.read_csv('rules_per_toko_baru.csv')
 
 data['Tanggal'] = pd.to_datetime(data['Tanggal'])
 
 # ======================
-# SIDEBAR
+# HOME (LIST TOKO)
 # ======================
-st.sidebar.title("📊 ADMIN PANEL")
-menu = st.sidebar.radio("Menu", ["📋 Data UMKM", "📊 Dashboard"])
+if st.session_state.page == "home":
 
-# ======================
-# HALAMAN 1
-# ======================
-if menu == "📋 Data UMKM":
+    st.markdown("""
+    <h1>🏪 UMKM F&B Pagar Alam</h1>
+    <p style='color:#94a3b8;'>Pilih toko untuk melihat detail dan analisis</p>
+    """, unsafe_allow_html=True)
 
-    st.title("📋 Data UMKM FNB Kota Pagar Alam")
+    # SEARCH
+    search = st.text_input("🔍 Cari Toko")
 
     toko_list = sorted(data['Toko'].unique())
 
-    for toko in toko_list:
+    if search:
+        toko_list = [t for t in toko_list if search.lower() in t.lower()]
 
-        df_toko = data[data['Toko'] == toko]
-        alamat = df_toko['Alamat'].iloc[0]
+    cols = st.columns(4)
 
-        with st.expander(f"🏪 {toko}"):
+    for i, toko in enumerate(toko_list):
+        with cols[i % 4]:
 
-            st.write(f"📍 **Alamat:** {alamat}")
+            st.markdown(f"""
+            <div class="card-clean">
+                <div class="card-title">🏪 {toko}</div>
+                <div class="card-sub">Klik untuk melihat detail</div>
+            </div>
+            """, unsafe_allow_html=True)
 
-            produk = sorted(df_toko['Nama Produk'].unique())
-
-            for p in produk:
-                st.write(f"- {p}")
+            if st.button("Lihat Detail", key=f"btn_{toko}", use_container_width=True):
+                st.session_state.selected_toko = toko
+                st.session_state.page = "detail"
+                st.rerun()
 
 # ======================
-# HALAMAN 2
+# DETAIL TOKO
 # ======================
-elif menu == "📊 Dashboard":
+elif st.session_state.page == "detail":
 
-    st.title("📊 Dashboard UMKM Food & Beverage")
+    toko = st.session_state.selected_toko
+    df_toko = data[data['Toko'] == toko]
+
+    st.markdown(f"<h1>🏪 {toko}</h1>", unsafe_allow_html=True)
+
+    alamat = df_toko['Alamat'].iloc[0]
+
+    # ALAMAT
+    st.markdown(f"""
+    <div class="card">
+        <h3>📍 Alamat</h3>
+        <p>{alamat}</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # MENU
+    st.markdown("### 🍽️ Daftar Menu")
+
+    produk = sorted(df_toko['Nama Produk'].unique())
+
+    cols = st.columns(4)
+    for i, p in enumerate(produk):
+        with cols[i % 4]:
+            st.markdown(f"""
+            <div class="card-clean">{p}</div>
+            """, unsafe_allow_html=True)
+
+    st.markdown("")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        if st.button("⬅️ Kembali"):
+            st.session_state.page = "home"
+            st.rerun()
+
+    with col2:
+        if st.button("📊 Lihat Analisis"):
+            st.session_state.page = "analisis"
+            st.rerun()
+
+# ======================
+# ANALISIS
+# ======================
+elif st.session_state.page == "analisis":
+
+    toko = st.session_state.selected_toko
+    df_all = data[data['Toko'] == toko]
+
+    st.markdown(f"<h1>📊 Analisis {toko}</h1>", unsafe_allow_html=True)
 
     # FILTER
     col1, col2 = st.columns(2)
-    bulan = col1.selectbox("Pilih Bulan", sorted(data['Bulan'].unique()))
-    tahun = col2.selectbox("Pilih Tahun", sorted(data['Tahun'].unique()))
+    bulan = col1.selectbox("Pilih Bulan", sorted(df_all['Bulan'].unique()))
+    tahun = col2.selectbox("Pilih Tahun", sorted(df_all['Tahun'].unique()))
 
-    df = data[(data['Bulan'] == bulan) & (data['Tahun'] == tahun)]
+    df = df_all[(df_all['Bulan'] == bulan) & (df_all['Tahun'] == tahun)]
 
     if df.empty:
         st.warning("Data tidak tersedia")
     else:
 
-        # ======================
-        # 🔝 CARD GLOBAL
-        # ======================
-        
+        # CARD
+        col1, col2, col3 = st.columns(3)
+
+        total_transaksi = df.groupby(['Tanggal']).ngroups
+        total_item = df['Terjual'].sum()
+        produk_terlaris = df.groupby('Nama Produk')['Terjual'].sum().idxmax()
+
+        with col1:
+            st.markdown(f"""
+            <div class="card">
+                <h3>Total Transaksi</h3>
+                <h1>{total_transaksi}</h1>
+            </div>
+            """, unsafe_allow_html=True)
+
+        with col2:
+            st.markdown(f"""
+            <div class="card">
+                <h3>Produk Terlaris</h3>
+                <h1>{produk_terlaris}</h1>
+            </div>
+            """, unsafe_allow_html=True)
+
+        with col3:
+            st.markdown(f"""
+            <div class="card">
+                <h3>Total Item</h3>
+                <h1>{total_item}</h1>
+            </div>
+            """, unsafe_allow_html=True)
 
         st.markdown("---")
 
+        # GRAFIK
+        st.markdown("### 📊 Grafik Penjualan")
+
+        top_produk = df.groupby('Nama Produk')['Terjual'].sum().reset_index()
+        top_produk = top_produk.sort_values(by='Terjual', ascending=False).head(10)
+
+        fig = px.bar(top_produk, x='Nama Produk', y='Terjual', color='Terjual')
+        st.plotly_chart(fig, use_container_width=True)
+
+        # TABEL
+        st.markdown("### 📋 Data Produk")
+        st.dataframe(top_produk)
+
         # ======================
-        # PER TOKO
+        # 🔗 POLA PEMBELIAN (UI IMPROVED)
         # ======================
-        toko_list = df['Toko'].unique()
+        st.markdown("### 🔗 Pola Pembelian (Association Rules)")
 
-        for toko in toko_list:
+        rules_toko = rules[rules['Toko'] == toko]
 
-            st.markdown(f"## 🏪 {toko}")
+        if not rules_toko.empty:
 
-            df_toko = df[df['Toko'] == toko]
-
-            # ======================
-            # CARD TOKO
-            # ======================
-            col1, col2, col3 = st.columns(3)
-
-            total_transaksi_toko = df_toko.groupby(['Tanggal']).ngroups
-            total_item_toko = df_toko['Terjual'].sum()
-
-            produk_terlaris_toko = df_toko.groupby('Nama Produk')['Terjual'].sum().idxmax()
-
-            with col1:
-                st.markdown(f"""
-                <div class="card card-blue">
-                    <h3>Total Transaksi</h3>
-                    <h1>{total_transaksi_toko}</h1>
-                </div>
-                """, unsafe_allow_html=True)
-
-            with col2:
-                st.markdown(f"""
-                <div class="card card-green">
-                    <h3>Produk Terlaris</h3>
-                    <h1>{produk_terlaris_toko}</h1>
-                </div>
-                """, unsafe_allow_html=True)
-
-            with col3:
-                st.markdown(f"""
-                <div class="card card-orange">
-                    <h3>Total Item Terjual</h3>
-                    <h1>{total_item_toko}</h1>
-                </div>
-                """, unsafe_allow_html=True)
-
-            # ======================
-            # GRAFIK
-            # ======================
-            st.markdown("### 📊 Grafik Produk Terlaris")
-
-            top_produk = df_toko.groupby('Nama Produk')['Terjual'].sum().reset_index()
-            top_produk = top_produk.sort_values(by='Terjual', ascending=False).head(10)
-
-            fig = px.bar(top_produk, x='Nama Produk', y='Terjual', color='Terjual')
-            st.plotly_chart(fig, use_container_width=True)
+            # format angka
+            rules_toko = rules_toko.copy()
+            rules_toko['support'] = rules_toko['support'].round(3)
+            rules_toko['confidence'] = rules_toko['confidence'].round(3)
+            rules_toko['lift'] = rules_toko['lift'].round(3)
 
             # ======================
             # TABEL
             # ======================
-            st.markdown("### 📋 Tabel Produk")
-
-            st.dataframe(top_produk)
+            with st.expander("📋 Lihat Tabel Lengkap"):
+                st.dataframe(rules_toko[['antecedents','consequents','support','confidence','lift']])
 
             # ======================
-            # 🔥 APRIORI PER TOKO (FIX)
+            # INSIGHT CARD
             # ======================
-            st.markdown("### 🔗 Pola Pembelian")
+            st.markdown("#### 💡 Insight Pola Pembelian")
 
-            rules_toko = rules[rules['Toko'] == toko]
+            for i, row in rules_toko.head(5).iterrows():
 
-            if not rules_toko.empty:
-                st.dataframe(rules_toko[['antecedents','consequents','support','confidence','lift']].head(5))
+                antecedent = row['antecedents']
+                consequent = row['consequents']
+                support = row['support']
+                confidence = row['confidence']
+                lift = row['lift']
 
-                for i, row in rules_toko.head(3).iterrows():
-                    st.success(f"Jika membeli {row['antecedents']} → {row['consequents']}")
-            else:
-                st.info("Tidak ada pola ditemukan")
+                # klasifikasi hubungan
+                if lift > 0.7:
+                    hubungan = "🟢 Kuat"
+                elif lift >= 0.6:
+                    hubungan = "🟡 Netral"
+                else:
+                    hubungan = "🔴 Lemah"
 
-            st.markdown("---")
+                # CARD UTAMA
+                st.markdown(f"""
+                <div style="
+                    background:#1e293b;
+                    padding:20px;
+                    border-radius:12px;
+                    margin-bottom:15px;
+                    border:1px solid rgba(255,255,255,0.05)
+                ">
+                    <h4 style="margin-bottom:10px;">📌 {antecedent} ➜ {consequent}</h4>
+                    <p style="color:#94a3b8; font-size:13px;">
+                    Jika pelanggan membeli <b>{antecedent}</b>, maka cenderung membeli <b>{consequent}</b>
+                    </p>
+                </div>
+                """, unsafe_allow_html=True)
+
+                # METRIC (3 KOLOM)
+                col1, col2, col3 = st.columns(3)
+
+                with col1:
+                    st.metric("Support", f"{support}", f"{round(support*100,1)}%")
+
+                with col2:
+                    st.metric("Confidence", f"{confidence}", f"{round(confidence*100,1)}%")
+
+                with col3:
+                    st.metric("Lift", f"{lift}", hubungan)
+
+                # INTERPRETASI
+                st.markdown(f"""
+                <div style="
+                    background:#0f172a;
+                    padding:15px;
+                    border-radius:10px;
+                    margin-top:10px;
+                    margin-bottom:25px;
+                    color:#cbd5f5;
+                    font-size:14px;
+                ">
+                🧠 <b>Interpretasi:</b><br>
+                Pelanggan yang membeli <b>{antecedent}</b> memiliki kemungkinan sebesar 
+                <b>{round(confidence*100,1)}%</b> untuk juga membeli <b>{consequent}</b>.<br>
+                Nilai lift <b>{lift}</b> menunjukkan hubungan <b>{hubungan}</b>.
+                </div>
+                """, unsafe_allow_html=True)
+
+        else:
+            st.info("Tidak ada pola pembelian yang ditemukan")
+
+    if st.button("⬅️ Kembali"):
+        st.session_state.page = "detail"
+        st.rerun()
